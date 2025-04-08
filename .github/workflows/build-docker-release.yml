@@ -1,0 +1,37 @@
+name: Build Docker Image and Release
+
+on:
+  push:
+    branches:
+      - main  # Trigger build on pushes to the main branch
+  pull_request:
+    branches:
+      - main  # Also trigger on PRs to main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # GitHub cloud runner
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker.io
+
+      - name: Build Docker image
+        run: |
+          docker build -t axum-app .
+
+      - name: Save Docker image as tar
+        run: |
+          docker save axum-app:latest -o axum-app.tar  # Save the Docker image as a tar file
+
+      - name: Upload Docker image to GitHub Releases
+        uses: softprops/action-gh-release@v1
+        with:
+          files: axum-app.tar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

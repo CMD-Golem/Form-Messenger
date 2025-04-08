@@ -1,0 +1,7 @@
+target
+.git
+.env
+.gitignore
+.github
+Cargo.lock
+README.md
