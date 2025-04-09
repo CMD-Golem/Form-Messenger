@@ -1,4 +1,4 @@
 # Form-Messenger
-Send froms to email
+Send submitted forms to perdefined email address.
 
 Using axum and lettre
