@@ -1,5 +1,5 @@
 use axum::{
-	http::{HeaderValue, Method, StatusCode},
+	http::{HeaderValue, Method, StatusCode, header},
 	response::IntoResponse,
 	routing::post,
 	Router
@@ -22,7 +22,6 @@ use tower_http::cors::CorsLayer;
 // use dotenv::var; // local
 
 use serde_json;
-use http::header;
 use tokio;
 
 
@@ -32,12 +31,13 @@ async fn main() {
 	let origins: Vec<HeaderValue> = origins_string.split_whitespace().filter_map(|item| HeaderValue::from_str(item).ok()).collect();
 
 	let app = Router::new()
+		.route("/health", post(health))
 		.route("/form-mail", post(send))
 		.layer(
 			CorsLayer::new()
 				.allow_origin(origins)
 				.allow_headers([header::CONTENT_TYPE])
-				.allow_methods([Method::POST])
+				.allow_methods([Method::GET, Method::POST])
 		);
 
 	// let addr = SocketAddr::from(([127, 0, 0, 1], 3000)); // local
@@ -107,4 +107,8 @@ async fn send_mail(subject: String, mail: String) -> Result<Response, Error> {
 		.build();
 
 	return mailer.send(email).await;
+}
+
+async fn health() -> StatusCode {
+	return StatusCode::OK;
 }
