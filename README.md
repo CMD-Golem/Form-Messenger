@@ -15,9 +15,9 @@ Recommended to use with [Treafik Rate Limit](https://doc.traefik.io/traefik/refe
 
 ## API
 GET /health
-	returns 200
+ - returns 200
 
 POST /mail
-	JSON body {subject: String, body: HTML}
-	returns 200
-	errors 400, 406 (JSON is broken)
+ - JSON body {subject: String, body: HTML}
+ - returns 200
+ - errors 400, 403 (Origin not allowed), 406 (JSON is broken)
