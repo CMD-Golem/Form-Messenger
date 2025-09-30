@@ -1,16 +1,19 @@
 use axum::{
-	body::Body,
 	http::{header, HeaderValue, Method, Request, StatusCode},
 	middleware::{self, Next},
 	response::{IntoResponse, Response},
 	routing::{get, post},
-	Router,
 	extract::State,
+	body::Body,
+	Router,
 };
 use lettre::{
-	Message, AsyncSmtpTransport, Tokio1Executor, AsyncTransport,
 	message::header::ContentType,
-	transport::smtp::authentication::Credentials
+	transport::smtp::authentication::Credentials,
+	Message,
+	AsyncSmtpTransport,
+	Tokio1Executor,
+	AsyncTransport,
 };
 
 use std::{
@@ -47,15 +50,17 @@ async fn main() {
 async fn require_origin(State(origins): State<Vec<HeaderValue>>, req: Request<Body>, next: Next) -> Result<Response, StatusCode> {
 	let origin = req.headers().get("origin");
 	return match origin {
-		Some(origin) => {
-			if origins.contains(origin) {
-				Ok(next.run(req).await)
-			}
-			else {
-				Err(StatusCode::FORBIDDEN)
-			}
+		Some(origin) if origins.contains(origin) => {
+			Ok(next.run(req).await)
 		}
-		None => Err(StatusCode::FORBIDDEN)
+		Some(origin) => { // else
+			print!("{origin:?} tried to fetch");
+			Err(StatusCode::FORBIDDEN)
+		}
+		None => {
+			print!("Unknown Origin tried to fetch");
+			Err(StatusCode::FORBIDDEN)
+		}
 	};
 }
 
@@ -68,7 +73,10 @@ async fn send(body: String) -> Result<Response, Response> {
 
 	// parse JSON
 	let json_body: serde_json::Value = serde_json::from_str(&body)
-		.map_err(|e| serde_error(e))?;
+		.map_err(|e| {
+			println!("Json: {e}");
+			return (StatusCode::NOT_ACCEPTABLE, format!("Failed to read body: {e}")).into_response();
+		})?;
 
 	let subject = json_body["subject"].as_str().unwrap_or("");
 	let body= json_body["body"].as_str().unwrap_or("");
@@ -80,35 +88,29 @@ async fn send(body: String) -> Result<Response, Response> {
 		.subject(subject)
 		.header(ContentType::TEXT_HTML)
 		.body(body.to_string())
-		.map_err(|e| lettre_error(e))?;
+		.map_err(|e| {
+			println!("Create: {e}");
+			return (StatusCode::BAD_REQUEST, format!("Failed to create email: {e}")).into_response();
+		})?;
 
 	// send mail
 	let _ = AsyncSmtpTransport::<Tokio1Executor>::relay(&smtp_host)
-		.map_err(|e| (StatusCode::BAD_REQUEST, format!("Failed to send email: {e}")).into_response())?
+		.map_err(|e| {
+			println!("SMTP: {e}");
+			return (StatusCode::BAD_REQUEST, format!("Failed to send email: {e}")).into_response();
+		})?
 		.credentials(Credentials::new(smpt_user.to_owned(), smtp_password.to_owned()))
 		.build()
 		.send(mail)
 		.await
-		.map_err(|e| smtp_error(e))?;
+		.map_err(|e| {
+			println!("Send: {e}");
+			return (StatusCode::BAD_REQUEST, format!("Failed to send email: {e}")).into_response();
+		})?;
 
 	return Ok((StatusCode::OK, format!("Email sent")).into_response());
 }
 
 async fn health() -> StatusCode {
 	return StatusCode::OK;
-}
-
-fn serde_error(e: serde_json::Error) -> Response<Body> {
-	println!("json: {e:?}");
-	return (StatusCode::NOT_ACCEPTABLE, format!("Failed to read body: {e}")).into_response();
-}
-
-fn lettre_error(e: lettre::error::Error) -> Response<Body> {
-	println!("Create: {e:?}");
-	return (StatusCode::BAD_REQUEST, format!("Failed to create email: {e}")).into_response();
-}
-
-fn smtp_error(e: lettre::transport::smtp::Error) -> Response<Body> {
-	println!("Send: {e:?}");
-	return (StatusCode::BAD_REQUEST, format!("Failed to send email: {e}")).into_response();
 }
