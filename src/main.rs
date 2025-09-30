@@ -32,19 +32,21 @@ async fn main() {
 	let origins: Vec<HeaderValue> = origins_string.split_whitespace().filter_map(|item| HeaderValue::from_str(item).ok()).collect();
 
 	let app = Router::new()
-		.route("/health", get(health))
 		.route("/mail", post(send))
+		.route_layer(middleware::from_fn_with_state(origins.clone(), require_origin))
 		.layer(
 			CorsLayer::new()
-				.allow_origin(origins.clone())
+				.allow_origin(origins)
 				.allow_headers([header::CONTENT_TYPE])
-				.allow_methods([Method::GET, Method::POST])
-		)
-		.route_layer(middleware::from_fn_with_state(origins, require_origin));
+				.allow_methods([Method::POST])
+		);
+
+	let health =  Router::new().route("/health", get(health));
+
 
 	let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
 	let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-	axum::serve(listener, app).await.unwrap();
+	axum::serve(listener, app.merge(health)).await.unwrap();
 }
 
 async fn require_origin(State(origins): State<Vec<HeaderValue>>, req: Request<Body>, next: Next) -> Result<Response, StatusCode> {
