@@ -46,7 +46,7 @@ async fn main() {
 
 	let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
 	let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-	axum::serve(listener, app.merge(health)).await.unwrap();
+	axum::serve(listener, health.merge(app)).await.unwrap();
 }
 
 async fn require_origin(State(origins): State<Vec<HeaderValue>>, req: Request<Body>, next: Next) -> Result<Response, StatusCode> {
