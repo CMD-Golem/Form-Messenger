@@ -20,7 +20,7 @@ use std::{
 	net::SocketAddr,
 	env::var
 };
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{Any, CorsLayer};
 
 use serde_json;
 use tokio;
@@ -33,7 +33,7 @@ async fn main() {
 
 	let app = Router::new()
 		.route("/mail", post(send))
-		.route_layer(middleware::from_fn_with_state(origins.clone(), require_origin))
+		.layer(middleware::from_fn_with_state(origins.clone(), require_origin))
 		.layer(
 			CorsLayer::new()
 				.allow_origin(origins)
@@ -41,7 +41,13 @@ async fn main() {
 				.allow_methods([Method::POST])
 		);
 
-	let health =  Router::new().route("/health", get(health));
+	let health =  Router::new()
+		.route("/health", get(health))
+		.layer(
+			CorsLayer::new()
+				.allow_origin(Any)
+				.allow_methods([Method::GET])
+		);
 
 
 	let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
@@ -53,14 +59,15 @@ async fn require_origin(State(origins): State<Vec<HeaderValue>>, req: Request<Bo
 	let origin = req.headers().get("origin");
 	return match origin {
 		Some(origin) if origins.contains(origin) => {
+			println!("{origin:?} has posted");
 			Ok(next.run(req).await)
 		}
 		Some(origin) => { // else
-			print!("{origin:?} tried to fetch");
+			println!("{origin:?} tried to post");
 			Err(StatusCode::FORBIDDEN)
 		}
 		None => {
-			print!("Unknown Origin tried to fetch");
+			println!("Unknown Origin tried to post");
 			Err(StatusCode::FORBIDDEN)
 		}
 	};

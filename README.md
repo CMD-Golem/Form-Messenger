@@ -18,6 +18,6 @@ GET /health
  - returns 200
 
 POST /mail
- - JSON body {subject: String, body: HTML}
+ - JSON body {subject: String, body: HTML String}
  - returns 200
  - errors 400, 403 (Origin not allowed), 406 (JSON is broken)
