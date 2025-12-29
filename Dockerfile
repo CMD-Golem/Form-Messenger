@@ -1,5 +1,5 @@
 # Build stage
-FROM rust:1.86 AS builder
+FROM rust:1.92 AS builder
 RUN apt-get update
 RUN apt-get install musl-tools -y
 

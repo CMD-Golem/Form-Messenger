@@ -1,6 +1,7 @@
 target
 .git
 .env
+.env.ps1
 .gitignore
 .github
 Cargo.lock
